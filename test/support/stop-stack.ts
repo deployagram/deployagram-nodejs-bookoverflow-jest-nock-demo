@@ -1,21 +1,18 @@
 import { getContainerRuntimeClient } from 'testcontainers';
 import type { TestStackIds } from './stack.js';
 
+/** Stops and removes what the run started. Runs in a child process, from global-teardown.ts. */
 async function stopStack(ids: TestStackIds): Promise<void> {
   const client = await getContainerRuntimeClient();
+  const containerIds = [ids.schemaRegistry, ids.kafka, ids.collector].flatMap((id) => (id ? [id] : []));
   const results = await Promise.allSettled(
-    [ids.schemaRegistry, ids.kafka].map(async (id) => {
+    containerIds.map(async (id) => {
       const container = client.container.getById(id);
       await client.container.stop(container, { timeout: 0 });
       await client.container.remove(container, { removeVolumes: true });
     }),
   );
-  const errors = results.flatMap((result) => result.status === 'rejected' ? [result.reason] : []);
-  try {
-    await client.network.remove(client.network.getById(ids.network));
-  } catch (error) {
-    errors.push(error);
-  }
+  const errors = results.flatMap((result) => (result.status === 'rejected' ? [result.reason] : []));
   if (errors.length) throw new AggregateError(errors, 'Failed to clean up the BookOverflow test stack');
 }
 

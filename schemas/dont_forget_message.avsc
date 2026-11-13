@@ -1,0 +1,54 @@
+{
+  "type": "record",
+  "name": "DontForgetMessage",
+  "namespace": "com.deployagram.demo.quarkus.avro",
+  "fields": [
+    {
+      "name": "email",
+      "type": {
+        "type": "string",
+        "avro.java.string": "String"
+      }
+    },
+    {
+      "name": "suggestion",
+      "type": {
+        "type": "record",
+        "name": "BookSuggestionMessage",
+        "fields": [
+          {
+            "name": "name",
+            "type": {
+              "type": "string",
+              "avro.java.string": "String"
+            }
+          },
+          {
+            "name": "edition",
+            "type": {
+              "type": "string",
+              "avro.java.string": "String"
+            }
+          },
+          {
+            "name": "format",
+            "type": {
+              "type": "string",
+              "avro.java.string": "String"
+            }
+          },
+          {
+            "name": "authors",
+            "type": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "avro.java.string": "String"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

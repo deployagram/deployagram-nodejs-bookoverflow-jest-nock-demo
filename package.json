@@ -9,19 +9,29 @@
     "node": ">=22"
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "test": "node --env-file-if-exists=.env ./node_modules/jest/bin/jest.js",
-    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@kafkajs/confluent-schema-registry": "^4.1.0",
+    "kafkajs": "^2.2.4"
   },
   "devDependencies": {
+    "@deployagram/api": "^1.0.0",
+    "@deployagram/core": "^1.0.0",
+    "@deployagram/environment": "^1.0.0",
+    "@deployagram/kafkajs": "^1.0.0",
+    "@deployagram/logger-client": "^1.0.0",
+    "@deployagram/nock": "^1.0.0",
     "@jest/globals": "^30.5.2",
-    "@kafkajs/confluent-schema-registry": "^4.1.0",
     "@swc/core": "^1.16.22",
     "@swc/jest": "^0.2.39",
     "@testcontainers/kafka": "^12.2.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.20.5",
     "jest": "^30.5.2",
-    "kafkajs": "^2.2.4",
     "nock": "^14.0.17",
     "testcontainers": "^12.2.1",
     "tsx": "^4.23.15",

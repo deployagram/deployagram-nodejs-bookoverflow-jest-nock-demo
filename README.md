@@ -37,3 +37,20 @@ Testcontainers to remove the two containers and their network by Docker ID. The 
 - **Kafka image.** `apache/kafka-native` does not work with testcontainers' Kafka module, which starts the broker
   with `/etc/confluent/docker/run`. That script is only in Confluent's images, so the tests use
   `confluentinc/cp-kafka:7.6.1` in KRaft mode.
+
+## Deployagram instrumentation
+
+The tests are instrumented through the Jest adapter in `test/support/deployagram.ts`, with `@deployagram/core`. There is
+no Proxy. Three things are recorded to the Collector:
+
+| Call | How it is recorded |
+|---|---|
+| AppA → BookOverflow (the HTTP call) | The test records it itself (`test/support/inbound-call.ts`) |
+| BookOverflow → ClassicBooks (the HTTP client) | `@deployagram/nock`, which records the Nock stub |
+| BookOverflow → Kafka (the produced message) | `@deployagram/kafkajs`, which reports each acknowledged record |
+
+Jest's global setup starts the Collector with `proxy: false`, in runtime mode, and points it at the Kafka broker and
+Schema Registry. The Collector is stopped at the end only if this run started it; one that was already running is left
+alone.
+
+The Collector's licence is read from `.env` and `.deployagram`, which are kept out of git.

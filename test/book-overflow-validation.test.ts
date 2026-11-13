@@ -1,12 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
+import { DiagramLoggerClient } from '@deployagram/logger-client';
 import nock from 'nock';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/globals';
 import { createBookOverflowServer } from '../src/book-overflow.js';
 import { SuggestionPublisher } from '../src/suggestion-publisher.js';
 import { createTopic, expectNoValue } from './support/kafka.js';
 import { brokersFromEnvironment, schemaRegistryUrlFromEnvironment } from './support/stack.js';
+import { callRecordingInbound } from './support/inbound-call.js';
+import { useDeployagram } from './support/deployagram.js';
 
 /** ClassicBooks, as BookOverflow calls it. Nock stubs this address in-process. */
 const CLASSIC_BOOKS_URL = 'http://localhost:9050';
@@ -17,14 +20,21 @@ type ClassicBooksStub = nock.Scope;
 
 describe('BookOverflowResourceTest', () => {
   let brokers: string[];
+  let logger: DiagramLoggerClient;
   let publisher: SuggestionPublisher;
   let server: Server;
   let appUrl: string;
   let topic: string;
 
+  // Finds the Collector that the run started. There is no Proxy: the test records its own inbound call.
+  const deployagram = useDeployagram({
+    name: 'BookOverflowResourceTest',
+  });
+
   beforeAll(async () => {
     brokers = brokersFromEnvironment();
     const schemaRegistryUrl = schemaRegistryUrlFromEnvironment();
+    logger = new DiagramLoggerClient({ baseUrl: deployagram.collectorUrl });
 
     // A topic of its own, so the test sees only what this test's requests write to it.
     topic = `SuppliedSuggestionsTopic-${randomUUID().slice(0, 8)}`;
@@ -62,10 +72,9 @@ describe('BookOverflowResourceTest', () => {
     return nock(CLASSIC_BOOKS_URL).get('/ClassicBooks/random').reply(200, { name: 'Refactoring' });
   }
 
-  // When: a reader asks BookOverflow over HTTP, with no email on the request.
+  // When: AppA calls BookOverflow over HTTP, with no email on the request.
   async function whenAReaderAsksWithoutAnEmail(): Promise<{ status: number; body: string }> {
-    const response = await fetch(`${appUrl}/BookOverflow/suggestion`);
-    return { status: response.status, body: await response.text() };
+    return callRecordingInbound(logger, { caller: 'AppA', callee: 'BookOverflow' }, new URL(`${appUrl}/BookOverflow/suggestion`));
   }
 
   // Then: BookOverflow answers 400, and says the email is required.
