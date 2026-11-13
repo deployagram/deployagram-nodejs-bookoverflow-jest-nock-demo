@@ -1,0 +1,30 @@
+{
+  "name": "deployagram-nodejs-bookoverflow-jest-nock-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A Node.js BookOverflow app: it serves a book recommendation over HTTP, asks ClassicBooks for a book, and publishes the suggestion to Kafka as Avro. Service tests use Jest, testcontainers and Nock to stub ClassicBooks.",
+  "license": "Unlicense",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --env-file-if-exists=.env ./node_modules/jest/bin/jest.js",
+    "typecheck": "tsc -p tsconfig.test.json --noEmit"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.5.2",
+    "@kafkajs/confluent-schema-registry": "^4.1.0",
+    "@swc/core": "^1.16.22",
+    "@swc/jest": "^0.2.39",
+    "@testcontainers/kafka": "^12.2.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.20.5",
+    "jest": "^30.5.2",
+    "kafkajs": "^2.2.4",
+    "nock": "^14.0.17",
+    "testcontainers": "^12.2.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
