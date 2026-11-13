@@ -1,0 +1,90 @@
+# Builds and tests the BookOverflow app, then checks its contracts through Deployagram before a Prod release.
+#
+# Repository secrets required (Settings > Secrets and variables > Actions):
+#   DEPLOYAGRAM_CLIENT_ID, DEPLOYAGRAM_CLOUD_USERNAME, DEPLOYAGRAM_CLOUD_PASSWORD,
+#   DEPLOYAGRAM_LICENSE_KEY, DEPLOYAGRAM_LICENSE
+name: Build, test and contract-check for Prod
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CONTAINER_NAME: BookOverflow
+  BUILD_ID: gha-node-bookoverflow-jest-nock-${{ github.run_number }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Deployagram
+        id: deployagram
+        uses: deployagram/deployagram-github-actions/setup@v1
+        with:
+          client-id: ${{ secrets.DEPLOYAGRAM_CLIENT_ID }}
+          username: ${{ secrets.DEPLOYAGRAM_CLOUD_USERNAME }}
+          password: ${{ secrets.DEPLOYAGRAM_CLOUD_PASSWORD }}
+          license-key: ${{ secrets.DEPLOYAGRAM_LICENSE_KEY }}
+          license: ${{ secrets.DEPLOYAGRAM_LICENSE }}
+          collector-port: '1152'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and test with npm
+        run: |
+          npm run build
+          npm test
+        env:
+          DEPLOYAGRAM_LICENSE_KEY: ${{ secrets.DEPLOYAGRAM_LICENSE_KEY }}
+          DEPLOYAGRAM_LICENSE: ${{ secrets.DEPLOYAGRAM_LICENSE }}
+          DEPLOYAGRAM_CLIENT_ID: ${{ secrets.DEPLOYAGRAM_CLIENT_ID }}
+          DEPLOYAGRAM_CLOUD_USERNAME: ${{ secrets.DEPLOYAGRAM_CLOUD_USERNAME }}
+          DEPLOYAGRAM_CLOUD_PASSWORD: ${{ secrets.DEPLOYAGRAM_CLOUD_PASSWORD }}
+          # The Collector started by the setup step above. Tests use this one rather than
+          # starting their own.
+          DEPLOYAGRAM_LOGGER_URL: ${{ env.DEPLOYAGRAM_COLLECTOR_URL }}
+
+      - name: Mark test run complete
+        if: ${{ success() }}
+        uses: deployagram/deployagram-github-actions/mark-test-run-complete@v1
+        with:
+          container: ${{ env.CONTAINER_NAME }}
+          test-run-id: ${{ env.BUILD_ID }}
+
+      - name: Contract query against the Collector
+        id: contract-query
+        uses: deployagram/deployagram-github-actions/contract-query@v1
+        with:
+          container: ${{ env.CONTAINER_NAME }}
+          test-run-id: ${{ env.BUILD_ID }}
+          environment: Prod
+
+      - name: Flush test run to Deployagram Cloud
+        if: steps.contract-query.outcome == 'success'
+        uses: deployagram/deployagram-github-actions/flush-to-cloud@v1
+        with:
+          container: ${{ env.CONTAINER_NAME }}
+
+      - name: Contract check against Deployagram Cloud
+        id: contract-check
+        uses: deployagram/deployagram-github-actions/contract-check@v1
+        with:
+          token: ${{ steps.deployagram.outputs.token }}
+          container: ${{ env.CONTAINER_NAME }}
+          build-id: ${{ env.BUILD_ID }}
+          environment: Prod
+
+      - name: Deploy to Production
+        if: steps.contract-check.outcome == 'success'
+        run: echo "Deploy your app to Production here"
